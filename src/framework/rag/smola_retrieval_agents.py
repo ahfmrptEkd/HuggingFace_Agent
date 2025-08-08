@@ -50,14 +50,25 @@ def run_web(query: str, model_id: str) -> str:
 
 
 def run_kb(query: str, model_id: str) -> str:
+    """Run KB retrieval using Chroma + HF embeddings (no rank_bm25).
+
+    Args:
+        query: Natural language query.
+        model_id: Inference model for the orchestrating agent.
+
+    Returns:
+        Retrieved ideas formatted as text.
+    """
+
     try:
         from langchain.docstore.document import Document
         from langchain.text_splitter import RecursiveCharacterTextSplitter
-        from langchain_community.retrievers import BM25Retriever
+        from langchain_community.embeddings import HuggingFaceEmbeddings
+        from langchain_community.vectorstores import Chroma
         from smolagents import CodeAgent, InferenceClientModel, Tool
     except Exception as exc:
         raise RuntimeError(
-            "Missing dependencies. Install: smolagents, langchain-community, rank_bm25"
+            "Missing dependencies. Install: smolagents, langchain-community, chromadb"
         ) from exc
 
     # Simulated knowledge base
@@ -94,10 +105,15 @@ def run_kb(query: str, model_id: str) -> str:
     )
     docs_processed = splitter.split_documents(source_docs)
 
+    # Build in-memory Chroma retriever with HF embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    vs = Chroma.from_documents(documents=docs_processed, embedding=embeddings)
+    retriever = vs.as_retriever(search_kwargs={"k": 5})
+
     class PartyPlanningRetrieverTool(Tool):
         name = "party_planning_retriever"
         description = (
-            "Uses BM25 semantic search to retrieve relevant party planning ideas."
+            "Retrieve relevant party planning ideas using vector similarity over HF embeddings."
         )
         inputs = {
             "query": {
@@ -107,27 +123,22 @@ def run_kb(query: str, model_id: str) -> str:
         }
         output_type = "string"
 
-        def __init__(self, docs, **kwargs):
+        def __init__(self, **kwargs):
             super().__init__(**kwargs)
-            self.retriever = BM25Retriever.from_documents(docs, k=5)
 
         def forward(self, query: str) -> str:  # type: ignore[override]
             assert isinstance(query, str), "Your search query must be a string"
-            docs = self.retriever.invoke(query)
+            docs = retriever.invoke(query)
             return "\nRetrieved ideas:\n" + "".join(
                 [
-                    f"\n\n===== Idea {str(i)} =====\n" + doc.page_content
-                    for i, doc in enumerate(docs)
+                    f"\n\n===== Idea {str(i)} =====\n" + d.page_content
+                    for i, d in enumerate(docs)
                 ]
             )
 
-    tool = PartyPlanningRetrieverTool(docs_processed)
+    tool = PartyPlanningRetrieverTool()
     agent = CodeAgent(tools=[tool], model=InferenceClientModel(model_id))
-    return str(
-        agent.run(
-            "Find ideas for a luxury superhero-themed party, including entertainment, catering, and decoration options."
-        )
-    )
+    return str(agent.run(query))
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

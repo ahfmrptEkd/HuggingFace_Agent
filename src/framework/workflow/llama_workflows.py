@@ -17,6 +17,16 @@ import argparse
 import asyncio
 import os
 
+# Import workflow types at module scope so decorators can resolve annotations
+from llama_index.core.workflow import (
+    StartEvent,
+    StopEvent,
+    Workflow,
+    step,
+    Event,
+    Context,
+)
+
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
@@ -34,11 +44,6 @@ def login_hf_if_token_present() -> None:
 
 
 async def run_basic() -> str:
-    try:
-        from llama_index.core.workflow import StartEvent, StopEvent, Workflow, step
-    except Exception as exc:
-        raise RuntimeError("llama-index-utils-workflow is required.") from exc
-
     class MyWorkflow(Workflow):
         @step
         async def my_step(self, ev: StartEvent) -> StopEvent:
@@ -50,9 +55,6 @@ async def run_basic() -> str:
 
 
 async def run_multi() -> str:
-    from llama_index.core.workflow import StartEvent, StopEvent, Workflow, step
-    from llama_index.core.workflow import Event
-
     class ProcessingEvent(Event):
         intermediate_result: str
 
@@ -71,8 +73,6 @@ async def run_multi() -> str:
 
 
 async def run_loop() -> str:
-    from llama_index.core.workflow import StartEvent, StopEvent, Workflow, step
-    from llama_index.core.workflow import Event
     import random
 
     class ProcessingEvent(Event):
@@ -98,9 +98,6 @@ async def run_loop() -> str:
 
 
 async def run_state() -> str:
-    from llama_index.core.workflow import StartEvent, StopEvent, Workflow, step, Context
-    from llama_index.core.workflow import Event
-
     class ProcessingEvent(Event):
         intermediate_result: str
 

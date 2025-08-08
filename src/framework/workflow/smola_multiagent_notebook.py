@@ -22,6 +22,7 @@ import argparse
 import math
 import os
 from typing import Optional, Tuple
+from smolagents import tool
 
 from dotenv import load_dotenv
 
@@ -39,6 +40,7 @@ def login_hf_if_token_present() -> None:
         print(f"[WARN] HF login skipped: {exc}")
 
 
+@tool
 def calculate_cargo_travel_time(
     origin_coords: Tuple[float, float],
     destination_coords: Tuple[float, float],
@@ -74,7 +76,7 @@ def calculate_cargo_travel_time(
     return round(flight_time, 2)
 
 
-def run_single(task: str, provider: Optional[str], model_id: str) -> str:
+def run_single(task: str, provider: Optional[str], model_id: str, search_provider: Optional[str]) -> str:
     try:
         from smolagents import (
             CodeAgent,
@@ -88,14 +90,18 @@ def run_single(task: str, provider: Optional[str], model_id: str) -> str:
     login_hf_if_token_present()
     agent = CodeAgent(
         model=InferenceClientModel(model_id=model_id, provider=provider or "together"),
-        tools=[GoogleSearchTool(provider=provider), VisitWebpageTool(), calculate_cargo_travel_time],
+        tools=[
+            GoogleSearchTool(provider=search_provider or "duckduckgo"),
+            VisitWebpageTool(),
+            calculate_cargo_travel_time,
+        ],
         additional_authorized_imports=["pandas"],
         max_steps=20,
     )
     return str(agent.run(task))
 
 
-def run_team(task: str, provider: Optional[str], manager_model: str, web_model: str) -> str:
+def run_team(task: str, provider: Optional[str], manager_model: str, web_model: str, search_provider: Optional[str]) -> str:
     try:
         from smolagents import (
             CodeAgent,
@@ -115,7 +121,11 @@ def run_team(task: str, provider: Optional[str], manager_model: str, web_model: 
 
     web_agent = CodeAgent(
         model=InferenceClientModel(web_model, provider=provider or "together", max_tokens=8096),
-        tools=[GoogleSearchTool(provider=provider or "serper"), VisitWebpageTool(), calculate_cargo_travel_time],
+        tools=[
+            GoogleSearchTool(provider=search_provider or "duckduckgo"),
+            VisitWebpageTool(),
+            calculate_cargo_travel_time,
+        ],
         name="web_agent",
         description="Browses the web to find information",
         verbosity_level=0,
@@ -179,12 +189,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     p_single = sub.add_parser("single", help="Single CodeAgent baseline")
     p_single.add_argument("--task", required=True)
-    p_single.add_argument("--provider", required=False, default="together")
+    p_single.add_argument("--provider", required=False, default="together", help="Model provider (e.g., together)")
+    p_single.add_argument("--search-provider", required=False, default="duckduckgo", help="Search provider: duckduckgo | serpapi | serper")
     p_single.add_argument("--model", required=False, default="Qwen/Qwen2.5-Coder-32B-Instruct")
 
     p_team = sub.add_parser("team", help="Manager + Web agent setup with plotting")
     p_team.add_argument("--task", required=True)
-    p_team.add_argument("--provider", required=False, default="together")
+    p_team.add_argument("--provider", required=False, default="together", help="Model provider (e.g., together)")
+    p_team.add_argument("--search-provider", required=False, default="duckduckgo", help="Search provider: duckduckgo | serpapi | serper")
     p_team.add_argument("--manager-model", required=False, default="deepseek-ai/DeepSeek-R1")
     p_team.add_argument("--web-model", required=False, default="Qwen/Qwen2.5-Coder-32B-Instruct")
 
@@ -194,10 +206,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_arg_parser().parse_args()
     if args.command == "single":
-        print(run_single(args.task, args.provider, args.model))
+        print(run_single(args.task, args.provider, args.model, args.search_provider))
         return
     if args.command == "team":
-        print(run_team(args.task, args.provider, args.manager_model, args.web_model))
+        print(run_team(args.task, args.provider, args.manager_model, args.web_model, args.search_provider))
         return
     raise SystemExit(2)
 

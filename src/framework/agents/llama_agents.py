@@ -53,17 +53,24 @@ def build_llm(model_name: str):
     except Exception:
         ChatOpenAI = None  # type: ignore
     try:
-        from langchain_huggingface import ChatHuggingFace
+        from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
     except Exception:
         ChatHuggingFace = None  # type: ignore
+        HuggingFaceEndpoint = None  # type: ignore
 
     lc_model = None
     model_lower = (model_name or "").lower()
     if ChatOpenAI and (model_lower.startswith("gpt-") or model_lower.startswith("o")):
         lc_model = ChatOpenAI(model=model_name)
-    elif ChatHuggingFace:
-        # Uses HF Inference API with HF_TOKEN
-        lc_model = ChatHuggingFace(repo_id=model_name)
+    elif ChatHuggingFace and HuggingFaceEndpoint:
+        # Uses HF Inference API with HF_TOKEN via LangChain endpoint wrapper
+        endpoint = HuggingFaceEndpoint(
+            repo_id=model_name,
+            task="text-generation",
+            max_new_tokens=256,
+            temperature=0.0,
+        )
+        lc_model = ChatHuggingFace(llm=endpoint)
 
     if lc_model is None:
         raise RuntimeError(
