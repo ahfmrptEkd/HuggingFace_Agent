@@ -1,3 +1,6 @@
 *.ipynb
 *.env
 *.pyc
+
+data_test/
+alfred_chroma_db_test/
