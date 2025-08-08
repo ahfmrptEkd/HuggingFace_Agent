@@ -2,10 +2,6 @@
 
 **HuggingFace Agents 학습 코스 - 완전 실습 가이드**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![HuggingFace](https://img.shields.io/badge/🤗-HuggingFace-orange.svg)](https://huggingface.co/learn/agents-course/)
-
 > **AI 에이전트 개발의 모든 것을 한 곳에서 배우세요!** 🚀
 
 이 프로젝트는 [HuggingFace Agents Course](https://huggingface.co/learn/agents-course/)를 기반으로 한 종합적인 AI 에이전트 학습 리포지토리입니다. SmolAgents, LlamaIndex, LangGraph 등 주요 에이전트 프레임워크를 실습을 통해 마스터할 수 있습니다.
