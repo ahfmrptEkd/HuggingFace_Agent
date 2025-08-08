@@ -227,7 +227,7 @@ def train(
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         packing=True,
-        max_seq_length=max_seq_length,
+        max_length=max_seq_length,
     )
 
     trainer = SFTTrainer(
